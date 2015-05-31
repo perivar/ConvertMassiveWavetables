@@ -70,11 +70,17 @@
     <Compile Include="..\AudioVSTToolbox\CommonUtils\IOUtils.cs">
       <Link>IOUtils.cs</Link>
     </Compile>
+    <Compile Include="..\AudioVSTToolbox\CommonUtils\MathUtils.cs">
+      <Link>MathUtils.cs</Link>
+    </Compile>
     <Compile Include="..\AudioVSTToolbox\CommonUtils\NumberUtils.cs">
       <Link>NumberUtils.cs</Link>
     </Compile>
     <Compile Include="..\AudioVSTToolbox\CommonUtils\StringUtils.cs">
       <Link>StringUtils.cs</Link>
+    </Compile>
+    <Compile Include="..\AudioVSTToolbox\Wav2Zebra2Osc\Zebra2OSCPreset.cs">
+      <Link>Zebra2OSCPreset.cs</Link>
     </Compile>
     <Compile Include="..\ExtractMassiveWavetables\MassiveMapping.cs">
       <Link>MassiveMapping.cs</Link>

@@ -6,6 +6,8 @@ using System.Collections.Generic;
 using System.Text.RegularExpressions;
 
 using ExtractMassiveWavetables; // for the massive mapping methods
+using Wav2Zebra2Osc; // for the zebra export methods
+
 using CommonUtils;
 using CommonUtils.Audio;
 
@@ -105,6 +107,8 @@ namespace ConvertMassiveWavetables
 					float[] audioData = BassProxy.ReadMonoFromFile(wavPath, out sampleRate, out bitsPerSample, out byteLength, BassProxy.MonoSummingType.Mix);
 					
 					// copy into new single cycle waveform arrays
+					float[][] soundData = MathUtils.CreateJaggedArray<float[][]>(16, 128);
+					var enabledSounds = new bool[16];
 					int cycleCount = 1;
 					for (int i = 0; i < audioData.Length; i += singleCycleLength) {
 						var singleCycleData = new float[singleCycleLength];
@@ -113,15 +117,29 @@ namespace ConvertMassiveWavetables
 						// output the corrected filenames
 						string newFileName = string.Format("{0}_{1}_{2}.wav", mapElement.GroupIndex, mapElement.CorrectFileName, cycleCount);
 						string newFilePath = Path.Combine(groupDirectory, newFileName);
+						
 						Console.Out.WriteLine("Creating file {0}.", newFilePath);
-
 						BassProxy.SaveFile(singleCycleData, newFilePath, 1, sampleRate, bitsPerSample);
+						
+						// resample for u-he zebra conversion
+						float[] singeCycle128 = MathUtils.Resample(singleCycleData, 128);
+						if (cycleCount < 17) {
+							Array.Copy(singeCycle128, 0, soundData[cycleCount-1], 0, 128);
+							enabledSounds[cycleCount-1] = true;
+						} else {
+							Console.Out.WriteLine("Zebra only support 16 waves in it's waveables.");
+							break;
+						}
 						cycleCount++;
 					}
+					
+					// convert to u-he zebra preset
+					string zebraPreset = string.Format("{0}_{1}.h2p", mapElement.GroupIndex, mapElement.CorrectFileName);
+					string zebraPresetFilePath = Path.Combine(groupDirectory, zebraPreset);
+					Zebra2OSCPreset.Write(soundData, enabledSounds, zebraPresetFilePath);
 				}
 			}
 			#endregion
-			
 		}
 	}
 }
