@@ -85,6 +85,7 @@
     <Compile Include="..\ExtractMassiveWavetables\MassiveMapping.cs">
       <Link>MassiveMapping.cs</Link>
     </Compile>
+    <Compile Include="EvenDistribution.cs" />
     <Compile Include="MassiveConverter.cs" />
     <Compile Include="Program.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
