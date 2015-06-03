@@ -5,6 +5,7 @@ using System.Linq;
 using System.Collections.Generic;
 using System.Text.RegularExpressions;
 
+using System.Xml.Linq;
 using ExtractMassiveWavetables; // for the massive mapping methods
 using Wav2Zebra2Osc; // for the zebra export methods
 
@@ -22,6 +23,9 @@ namespace ConvertMassiveWavetables
 			
 			// init the audio system
 			var audioSystem = BassProxy.Instance;
+			
+			// generate the sine data (used for zebra morphing)
+			var sineData = OscillatorGenerator.Sine();
 			
 			string massiveWavetablesPath = Path.Combine(inputDirectory, "wt");
 			if (Directory.Exists(massiveWavetablesPath)) {
@@ -43,7 +47,7 @@ namespace ConvertMassiveWavetables
 						// that doesn't seem to happen - so we are fine!
 						int count = 0;
 						foreach (var wavFile in wavFiles) {
-							SplitIntoSingleCycleWaveforms(inputDirectory, wavFile, singleCycleLength, map, outputDirectory);
+							SplitIntoSingleCycleWaveforms(inputDirectory, wavFile, singleCycleLength, map, outputDirectory, sineData);
 							if (count > 0) {
 								Console.Out.WriteLine("Wops, I don't think this is supposed to happen.");
 							}
@@ -81,7 +85,7 @@ namespace ConvertMassiveWavetables
 			return -1;
 		}
 		
-		static void SplitIntoSingleCycleWaveforms(string baseDirectory, string wavPath, int singleCycleLength, Dictionary<string, MassiveMapElement> map, string outputDirectory) {
+		static void SplitIntoSingleCycleWaveforms(string baseDirectory, string wavPath, int singleCycleLength, Dictionary<string, MassiveMapElement> map, string outputDirectory, float[] sineData) {
 			
 			// use path after the base dir as map key
 			string mapKey = IOUtils.GetRightPartOfPath(wavPath, baseDirectory + Path.DirectorySeparatorChar);
@@ -106,10 +110,11 @@ namespace ConvertMassiveWavetables
 					long byteLength = -1;
 					float[] audioData = BassProxy.ReadMonoFromFile(wavPath, out sampleRate, out bitsPerSample, out byteLength, BassProxy.MonoSummingType.Mix);
 					
-					// copy into new single cycle waveform arrays
-					float[][] soundData = MathUtils.CreateJaggedArray<float[][]>(16, 128);
-					var enabledSounds = new bool[16];
+					// temporary storage for the 128 single cycle samples
+					var waveforms = new List<float[]>();
 					int cycleCount = 1;
+					
+					// find each single cycle waveforms
 					for (int i = 0; i < audioData.Length; i += singleCycleLength) {
 						var singleCycleData = new float[singleCycleLength];
 						Array.Copy(audioData, i, singleCycleData, 0, singleCycleLength);
@@ -121,25 +126,104 @@ namespace ConvertMassiveWavetables
 						Console.Out.WriteLine("Creating file {0}.", newFilePath);
 						BassProxy.SaveFile(singleCycleData, newFilePath, 1, sampleRate, bitsPerSample);
 						
-						// resample for u-he zebra conversion
+						// resample to 128 samples for u-he zebra conversion
 						float[] singeCycle128 = MathUtils.Resample(singleCycleData, 128);
+						
+						// zebra only supports 16 slots
 						if (cycleCount < 17) {
-							Array.Copy(singeCycle128, 0, soundData[cycleCount-1], 0, 128);
-							enabledSounds[cycleCount-1] = true;
+							waveforms.Add(singeCycle128);
 						} else {
-							Console.Out.WriteLine("Zebra only support 16 waves in it's waveables.");
+							Console.Out.WriteLine("Zebra only support 16 waves in it's wavetables.");
 							break;
 						}
 						cycleCount++;
 					}
 					
-					// convert to u-he zebra preset
-					string zebraPreset = string.Format("{0}_{1}.h2p", mapElement.GroupIndex, mapElement.CorrectFileName);
-					string zebraPresetFilePath = Path.Combine(groupDirectory, zebraPreset);
-					Zebra2OSCPreset.Write(soundData, enabledSounds, zebraPresetFilePath);
+					#region Save a non-morphed and a morphed version of the zebra preset
+					
+					// single cycle waveform array for non-morphed data
+					float[][] soundData = MathUtils.CreateJaggedArray<float[][]>(16, 128);
+
+					// single cycle waveform arrays for morphed daya
+					float[][] morphData = MathUtils.CreateJaggedArray<float[][]>(16, 128);
+					
+					// distribute the waves found evenly within the 16 available slots
+					var evenDistribution = MathUtils.GetEvenDistributionPreferEdges(waveforms.Count, 16);
+					var indices = MathUtils.IndexOf(evenDistribution, 1);
+					
+					if (waveforms.Count() == 1) {
+						// set sine data to last element (for morphing later)
+						Array.Copy(sineData, 0, morphData[15], 0, 128);
+					}
+					
+					if (indices.Count() == waveforms.Count()) {
+						var enabledMorphSlots = new bool[16];
+						var enabledSoundSlots = new bool[16];
+						
+						for (int i = 0; i < waveforms.Count; i++) {
+							// add the waves successively to the normal sound data
+							Array.Copy(waveforms[i], 0, soundData[i], 0, 128);
+							enabledSoundSlots[i] = true;
+							
+							// spread out the waves to later be morphed
+							int index = indices[i];
+							Array.Copy(waveforms[i], 0, morphData[index], 0, 128);
+						}
+						
+						// morph between the added waveforms (slots)
+						MathUtils.Morph(ref morphData, 0, 15);
+						
+						// and ensure all of them are enables
+						for (int j = 0; j < 16; j++) {
+							enabledMorphSlots[j] = true;
+						}
+
+						// save the non-morphed u-he zebra preset
+						string zebraPreset = string.Format("{0}_{1}.h2p", mapElement.GroupIndex, mapElement.CorrectFileName);
+						string zebraPresetFilePath = Path.Combine(groupDirectory, zebraPreset);
+						Zebra2OSCPreset.Write(soundData, enabledSoundSlots, zebraPresetFilePath);
+
+						// save the morphed u-he zebra preset
+						string zebraMorphPreset = string.Format("{0}_{1}_Morph.h2p", mapElement.GroupIndex, mapElement.CorrectFileName);
+						string zebraMorphPresetFilePath = Path.Combine(groupDirectory, zebraMorphPreset);
+						Zebra2OSCPreset.Write(morphData, enabledMorphSlots, zebraMorphPresetFilePath);
+						#endregion
+						
+					} else {
+						// this should never happen
+						Console.Out.WriteLine("Failed! Could not set wavetables correctly.");
+					}
 				}
 			}
 			#endregion
+		}
+	}
+	
+	class WaveTableSlot {
+		float[] soundData;
+		bool enabled = false;
+
+		public bool Enabled {
+			get {
+				return enabled;
+			}
+			set {
+				enabled = value;
+			}
+		}
+		
+		public float[] SoundData {
+			get {
+				return soundData;
+			}
+			set {
+				soundData = value;
+			}
+		}
+		
+		public WaveTableSlot(float[] soundData, bool enabled) {
+			this.SoundData = soundData;
+			this.Enabled = enabled;
 		}
 	}
 }

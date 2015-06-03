@@ -67,6 +67,9 @@
     <Compile Include="..\AudioVSTToolbox\CommonUtils\Audio\IWaveformPlayer.cs">
       <Link>IWaveformPlayer.cs</Link>
     </Compile>
+    <Compile Include="..\AudioVSTToolbox\CommonUtils\Audio\OscillatorGenerator.cs">
+      <Link>OscillatorGenerator.cs</Link>
+    </Compile>
     <Compile Include="..\AudioVSTToolbox\CommonUtils\IOUtils.cs">
       <Link>IOUtils.cs</Link>
     </Compile>
@@ -85,7 +88,6 @@
     <Compile Include="..\ExtractMassiveWavetables\MassiveMapping.cs">
       <Link>MassiveMapping.cs</Link>
     </Compile>
-    <Compile Include="EvenDistribution.cs" />
     <Compile Include="MassiveConverter.cs" />
     <Compile Include="Program.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />

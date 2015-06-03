@@ -8,6 +8,9 @@ namespace ConvertMassiveWavetables
 		
 		public static void Main(string[] args)
 		{
+			//EvenDistribution.EvenDistributionTest();
+			//return;
+			
 			if (args.Length < 2) {
 				System.Console.Out.WriteLine("Convert NI Massive Wavetables (Extracted from tables.dat)");
 				System.Console.Out.WriteLine("into Single Cycle Waveforms and u-he Zebra 2 Wavetables.");
