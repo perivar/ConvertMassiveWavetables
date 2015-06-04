@@ -97,11 +97,18 @@ namespace ConvertMassiveWavetables
 				if (!mapElement.GroupName.Equals("")
 				    && !mapElement.CorrectFileName.Equals("")) {
 					
-					// group directory
-					string groupDirectory = Path.Combine(outputDirectory, "Single Cycle Waveforms", StringUtils.MakeValidFileName(mapElement.GroupName));
+					// create single cycle directory
+					string singleCycleDirectory = Path.Combine(outputDirectory, "Single Cycle Waveforms", StringUtils.MakeValidFileName(mapElement.GroupName));
 					
-					if (!Directory.Exists(groupDirectory)) {
-						Directory.CreateDirectory(groupDirectory);
+					if (!Directory.Exists(singleCycleDirectory)) {
+						Directory.CreateDirectory(singleCycleDirectory);
+					}
+
+					// create preset file directory
+					string presetFileDirectory = Path.Combine(outputDirectory, "Zebra2 Osc Presets", StringUtils.MakeValidFileName(mapElement.GroupName));
+					
+					if (!Directory.Exists(presetFileDirectory)) {
+						Directory.CreateDirectory(presetFileDirectory);
 					}
 					
 					// read audio data as mono
@@ -121,7 +128,7 @@ namespace ConvertMassiveWavetables
 						
 						// output the corrected filenames
 						string newFileName = string.Format("{0}_{1}_{2}.wav", mapElement.GroupIndex, mapElement.CorrectFileName, cycleCount);
-						string newFilePath = Path.Combine(groupDirectory, newFileName);
+						string newFilePath = Path.Combine(singleCycleDirectory, newFileName);
 						
 						Console.Out.WriteLine("Creating file {0}.", newFilePath);
 						BassProxy.SaveFile(singleCycleData, newFilePath, 1, sampleRate, bitsPerSample);
@@ -168,24 +175,25 @@ namespace ConvertMassiveWavetables
 							// spread out the waves to later be morphed
 							int index = indices[i];
 							Array.Copy(waveforms[i], 0, morphData[index], 0, 128);
+							enabledMorphSlots[index] = true; // before morphing this is used to tell what slots are loaded
 						}
 						
 						// morph between the added waveforms (slots)
-						MathUtils.Morph(ref morphData, 0, 15);
+						Zebra2OSCPreset.MorphAllSegments(enabledMorphSlots, ref morphData);
 						
-						// and ensure all of them are enables
+						// before writing the file ensure all of the morhp slots are enabled
 						for (int j = 0; j < 16; j++) {
 							enabledMorphSlots[j] = true;
 						}
 
 						// save the non-morphed u-he zebra preset
 						string zebraPreset = string.Format("{0}_{1}.h2p", mapElement.GroupIndex, mapElement.CorrectFileName);
-						string zebraPresetFilePath = Path.Combine(groupDirectory, zebraPreset);
+						string zebraPresetFilePath = Path.Combine(presetFileDirectory, zebraPreset);
 						Zebra2OSCPreset.Write(soundData, enabledSoundSlots, zebraPresetFilePath);
 
 						// save the morphed u-he zebra preset
 						string zebraMorphPreset = string.Format("{0}_{1}_Morph.h2p", mapElement.GroupIndex, mapElement.CorrectFileName);
-						string zebraMorphPresetFilePath = Path.Combine(groupDirectory, zebraMorphPreset);
+						string zebraMorphPresetFilePath = Path.Combine(presetFileDirectory, zebraMorphPreset);
 						Zebra2OSCPreset.Write(morphData, enabledMorphSlots, zebraMorphPresetFilePath);
 						#endregion
 						
