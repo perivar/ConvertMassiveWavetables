@@ -19,8 +19,8 @@ ConvertMassiveWavetables.exe "path-to-directory-containing-the-extracted-files" 
 Note! It expects to find the folder 'wt', 'pt' and so on in the directory specified by the first command line argument.
 
 
-This will create a Converted folder with a 'Single Cycle Waveforms' sub-folders.
-Within that sub-folder you will find the Single Cycle Waveforms and the u-he zebra 2 oscillator preset files.
+This will create a Converted folder with 'Single Cycle Waveforms' and 'Zebra2 Osc Presets' sub-folders.
+Within the first sub-folder you will find the Single Cycle Waveforms and within the second the u-he zebra 2 oscillator preset files.
 
 
 Enjoy!
